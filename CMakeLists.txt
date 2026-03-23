@@ -31,5 +31,5 @@ target_include_directories(imgui PUBLIC
 target_link_libraries(imgui PUBLIC glfw)
 
 add_executable(
-        charybdis main.cpp
+        charybdis src/main.cpp
 )
