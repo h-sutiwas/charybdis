@@ -5,12 +5,24 @@ set(CMAKE_CXX_STANDARD 23)
 
 include(FetchContent)
 
+#
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
+
+# GLAD
+add_library(glad STATIC external/glad/src/glad.c)
+target_include_directories(glad PUBLIC external/glad/include)
+
+# STB (Interface library - header only library)
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE external/stb)
+
+# Fetch and Build ImGui
 FetchContent_Declare(
         imgui
         GIT_REPOSITORY https://github.com/ocornut/imgui.git
         GIT_TAG master
 )
-
 FetchContent_MakeAvailable(imgui)
 
 add_library(imgui STATIC
@@ -28,8 +40,9 @@ target_include_directories(imgui PUBLIC
         ${imgui_SOURCE_DIR}/backends
 )
 
-target_link_libraries(imgui PUBLIC glfw)
+target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
-add_executable(
-        charybdis src/main.cpp
-)
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+add_executable(charybdis ${SOURCES})
+
+target_link_libraries(charybdis PRIVATE imgui glfw glad OpenGL::GL stb)
