@@ -18,34 +18,68 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/vec3.hpp>
 
-const int WIDTH = 1920, HEIGHT = 1080;
+
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+
 
 int main(){
+    // Initialize GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
 
+    // Set optional window hints
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Charybdis", nullptr, nullptr);
+    // Create window
+    GLFWwindow* window = glfwCreateWindow(960, 540, "Charybdis", nullptr, nullptr);
     if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
+        std::cerr << "Failed to create GLFW window\n" << std::endl;
         glfwTerminate();
         return -1;
     }
 
+    // Make context current
     glfwMakeContextCurrent(window);
-
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
 
-    std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
+    // For checking OpenGL version and GPU for rendering
+    std::cout << "OpenGL version:   " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "GPU Vendor:       " << glGetString(GL_VENDOR) << std::endl;
+    std::cout << "GPU Model:        " << glGetString(GL_RENDERER) << std::endl;
+
+    glViewport(0, 0, 960, 540);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // Main render loop
+    while (!glfwWindowShouldClose(window)) {
+        // Close if click ESC
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        }
+
+        // Rendering commands
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Swap buffers and poll events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
+    glfwDestroyWindow(window);
     glfwTerminate();
 
     return 0;
