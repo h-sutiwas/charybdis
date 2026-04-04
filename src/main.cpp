@@ -117,39 +117,47 @@ int main(){
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    // ------ Triangle ------
-    float vertices[] = {
-        // first triangle
+    // ------ Triangles ------
+    float firstTriangle[] = {
         -0.9f, -0.5f, 0.0f,  // left
         -0.0f, -0.5f, 0.0f,  // right
         -0.45f, 0.5f, 0.0f,  // top
-        // second triangle
-         0.0f, -0.5f, 0.0f,  // left
-         0.9f, -0.5f, 0.0f,  // right
-         0.45f, 0.5f, 0.0f   // top
+    };
+    float secondTriangle[] = {
+        0.0f, -0.5f, 0.0f,  // left
+        0.9f, -0.5f, 0.0f,  // right
+        0.45f, 0.5f, 0.0f   // top
     };
 
     // Testing a vertex buffer objects to store large number of vertices in the
     // GPU's memory
-    unsigned int VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+
+    // first triangle setup
+    // --------------------
+    unsigned int VBOs[2], VAOs[2];
+    glGenVertexArrays(2, VAOs);
+    glGenBuffers(2, VBOs);
 
     // Binding the vertex array object first
-    glBindVertexArray(VAO);
-
-    // Then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
+    glBindVertexArray(VAOs[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(firstTriangle), firstTriangle, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void *>(nullptr));
     glEnableVertexAttribArray(0);
 
+    // second triangle setup
+    // ---------------------
+    glBindVertexArray(VAOs[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(secondTriangle), secondTriangle, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, static_cast<void *>(nullptr));
+    glEnableVertexAttribArray(0);
+
     // Unbind buffer
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Unbind array
-    glBindVertexArray(0);
+    // glBindVertexArray(0);
 
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
@@ -161,8 +169,11 @@ int main(){
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(VAOs[0]);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        glBindVertexArray(VAOs[1]);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
@@ -170,8 +181,8 @@ int main(){
     }
 
     // Cleanup
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(2, VAOs);
+    glDeleteBuffers(2, VBOs);
     glDeleteProgram(shaderProgram);
 
     glfwDestroyWindow(window);
