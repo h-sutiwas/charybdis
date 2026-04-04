@@ -14,7 +14,7 @@
 
 
 
-// Define possible options for camera movement without
+// Define possible options for camera movement
 enum cameraMovement {
     forward,
     backward,
@@ -31,15 +31,31 @@ enum cameraType {
 // Camera Class
 class Camera {
     public:
-        glm::vec3 cameraPosition;
-        glm::vec3 rotation;
-        glm::vec3 scale;
-        glm::mat4 view;
-        glm::mat4 projection;
-        glm::mat4 model;
-        glm::mat4 projection_view;
-        glm::mat4 model_view;
-        glm::vec3 worldPosition;
+        glm::vec3 Position;
+        glm::vec3 Front;
+        glm::vec3 Up;
+        glm::vec3 Right;
+        glm::vec3 WorldUp;
+        glm::vec3 LookAt;
+        cameraType type;
+
+        // euler angles
+        float Yaw;
+        float Pitch;
+
+        // camera controls
+        float MovementSpeed;
+        float MouseSensitivity;
+        float Zoom;
+        float lastX;
+        float lastY;
+
+        // contructors
+        Camera();
+        Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch);
+
+        glm::mat4 GetViewMatrix();
+
 
 };
 
