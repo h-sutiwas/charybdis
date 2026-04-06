@@ -2,49 +2,43 @@
 // Created by h-sutiwas on 2026-03-23.
 //
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "../external/stb/stb_image.h"
+// #define STB_IMAGE_IMPLEMENTATION
+// #include "../external/stb/stb_image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+// #include <windows.h>
 #include <iostream>
+#include <string>
+#include <fstream>
 #include <sstream>
-#include <windows.h>
-
-#include <string.h>
 #include <vector>
-#include <algorithm>
-#include <functional>
+
+// #include <algorithm>
+// #include <functional>
+
+#include <filesystem>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/vec3.hpp>
 
 // Initialize functions
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
+void framebuffer_size_callback(GLFWwindow *window, int width, int height);
+
+void processInput(GLFWwindow *window);
 
 std::string checkShaderType(GLuint shader);
+
 void checkShaderError(GLuint shader);
+
 void checkProgramError(GLuint program, std::string programType);
 
-// Vertex Shader
-const char *vertexShaderSource = "#version 460 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"void main()\n"
-"{\n"
-"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-"}\0";
+std::string readShaderSource(const std::string &fileName);
 
-// Fragment Shader
-const char *fragmentShaderSource = "#version 460 core\n"
-"out vec4 FragColor;\n"
-"void main() {\n"
-"    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-"}\0";
+int main() {
+    // std::cout << "CWD:" << std::filesystem::current_path().string() << std::endl;
 
-//
-int main(){
     // Initialize GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -56,7 +50,7 @@ int main(){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window
-    GLFWwindow* window = glfwCreateWindow(960, 540, "Charybdis", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(960, 540, "Charybdis", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n" << std::endl;
         glfwTerminate();
@@ -78,13 +72,17 @@ int main(){
 
     // Vertex Shader
     unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    std::string vertexShaderSource = readShaderSource("src/shaders/vertex.glsl");
+    const char *vShaderCode = vertexShaderSource.c_str();
+    glShaderSource(vertexShader, 1, &vShaderCode, nullptr);
     glCompileShader(vertexShader);
     checkShaderError(vertexShader); // Checking for shader compile-time errors
 
     // Fragment Shader
     unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    std::string fragmentShaderSource = readShaderSource("src/shaders/fragment.glsl");
+    const char *fShaderCode = fragmentShaderSource.c_str();
+    glShaderSource(fragmentShader, 1, &fShaderCode, nullptr);
     glCompileShader(fragmentShader);
     checkShaderError(fragmentShader); // Check for shader compile-time errors
 
@@ -93,7 +91,7 @@ int main(){
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
-    checkProgramError(shaderProgram, "SHADER");// Check linking failed or not and retrieve corresponding log
+    checkProgramError(shaderProgram, "SHADER"); // Check linking failed or not and retrieve corresponding log
 
     // Delete shaders to clear up
     glDeleteShader(vertexShader);
@@ -101,14 +99,14 @@ int main(){
 
     // ------ Triangles ------
     float firstTriangle[] = {
-        -0.9f, -0.5f, 0.0f,  // left
-        -0.0f, -0.5f, 0.0f,  // right
-        -0.45f, 0.5f, 0.0f,  // top
+        -0.9f, -0.5f, 0.0f, // left
+        -0.0f, -0.5f, 0.0f, // right
+        -0.45f, 0.5f, 0.0f, // top
     };
     float secondTriangle[] = {
-        0.0f, -0.5f, 0.0f,  // left
-        0.9f, -0.5f, 0.0f,  // right
-        0.45f, 0.5f, 0.0f   // top
+        0.0f, -0.5f, 0.0f, // left
+        0.9f, -0.5f, 0.0f, // right
+        0.45f, 0.5f, 0.0f // top
     };
 
     // Testing a vertex buffer objects to store large number of vertices in the
@@ -181,7 +179,7 @@ void processInput(GLFWwindow *window) {
 }
 
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
@@ -227,4 +225,18 @@ void checkProgramError(GLuint program, std::string programType) {
     } else {
         std::cout << "SUCCESSFULLY::LINKING::PROGRAM::" << programType << infoLog << std::endl;
     }
+}
+
+
+std::string readShaderSource(const std::string &fileName) {
+    std::ifstream file(fileName);
+    if (!file.is_open()) {
+        return "CANNOT OPEN FILE";
+    }
+
+    std::stringstream ss;
+    ss << file.rdbuf();
+    file.close();
+
+    return ss.str();
 }
