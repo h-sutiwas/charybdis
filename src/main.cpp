@@ -24,6 +24,10 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 
+std::string checkShaderType(GLuint shader);
+void checkShaderError(GLuint shader);
+void checkProgramError(GLuint program, std::string programType);
+
 // Vertex Shader
 const char *vertexShaderSource = "#version 460 core\n"
 "layout (location = 0) in vec3 aPos;\n"
@@ -73,47 +77,25 @@ int main(){
     // std::cout << "GPU Model:        " << glGetString(GL_RENDERER) << std::endl;
 
     // Vertex Shader
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
     glCompileShader(vertexShader);
-
-    // Checking for shader compile-time errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-        std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+    checkShaderError(vertexShader); // Checking for shader compile-time errors
 
     // Fragment Shader
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
     glCompileShader(fragmentShader);
-
-    // Check for shader compile-time errors
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-        std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
+    checkShaderError(fragmentShader); // Check for shader compile-time errors
 
     // Link Shaders
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
+    unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
+    checkProgramError(shaderProgram, "SHADER");// Check linking failed or not and retrieve corresponding log
 
-    // Check linking failed or not and retrieve corresponding log
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(shaderProgram, 512, nullptr, infoLog);
-    }
+    // Delete shaders to clear up
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
@@ -201,4 +183,48 @@ void processInput(GLFWwindow *window) {
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
+}
+
+
+std::string checkShaderType(GLuint shader) {
+    GLint shaderType;
+    glGetShaderiv(shader, GL_SHADER_TYPE, &shaderType);
+
+    switch (shaderType) {
+        case GL_VERTEX_SHADER: return "GL_VERTEX_SHADER";
+        case GL_FRAGMENT_SHADER: return "GL_FRAGMENT_SHADER";
+        case GL_GEOMETRY_SHADER: return "GL_GEOMETRY_SHADER";
+        case GL_COMPUTE_SHADER: return "GL_COMPUTE_SHADER";
+        default: return "UNKNOWN_SHADER_TYPE";
+    }
+}
+
+
+void checkShaderError(GLuint shader) {
+    int success;
+    char infoLog[512];
+
+    std::string shaderType = checkShaderType(shader);
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
+    if (!success) {
+        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
+        std::cerr << "ERROR::SHADER::" << shaderType << "::COMPILATION_FAILED\n" << infoLog << std::endl;
+    } else {
+        std::cout << "SUCCESSFULLY::COMPILED::SHADER::" << shaderType << infoLog << std::endl;
+    }
+}
+
+
+void checkProgramError(GLuint program, std::string programType) {
+    int success;
+    char infoLog[512];
+
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(program, 512, nullptr, infoLog);
+        std::cerr << "ERROR::PROGRAM::" << programType << "::LINKING_FAILED\n" << infoLog << std::endl;
+    } else {
+        std::cout << "SUCCESSFULLY::LINKING::PROGRAM::" << programType << infoLog << std::endl;
+    }
 }
