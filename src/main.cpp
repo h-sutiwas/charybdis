@@ -65,6 +65,12 @@ int main() {
     }
     glViewport(0, 0, 960, 540);
 
+    // Maximum number of vertex attributes we're allowed to declare
+    // For OpenGL, there are at least 16 4-component vertex attributes available
+    int nrAttributes;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+    std::cout << "Maximum nr of vertex attributes supported: " << nrAttributes << std::endl;
+
     //---- For checking OpenGL version and GPU for rendering ----//
     // std::cout << "OpenGL version:   " << glGetString(GL_VERSION) << std::endl;
     // std::cout << "GPU Vendor:       " << glGetString(GL_VENDOR) << std::endl;
@@ -231,7 +237,7 @@ void checkProgramError(GLuint program, std::string programType) {
 std::string readShaderSource(const std::string &fileName) {
     std::ifstream file(fileName);
     if (!file.is_open()) {
-        return "CANNOT OPEN FILE";
+        std::cerr << "CANNOT OPEN FILE" << std::endl;
     }
 
     std::stringstream ss;
