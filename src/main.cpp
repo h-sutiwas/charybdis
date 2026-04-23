@@ -13,15 +13,18 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <cmath>
 
 // #include <algorithm>
 // #include <functional>
 
 #include <filesystem>
+// #include <bits/valarray_after.h>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/vec3.hpp>
+#include <glm/detail/func_trigonometric.inl>
 
 // Initialize functions
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -155,7 +158,16 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
+
         glBindVertexArray(VAOs[0]);
+
+        // Uniform color blipping
+        float timeValue = glfwGetTime();
+        float greenValue = (glm::sin(timeValue) + 2.0f) / 3.0f;
+        int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
+        glUseProgram(shaderProgram);
+        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
         glBindVertexArray(VAOs[1]);
