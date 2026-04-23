@@ -160,18 +160,26 @@ int main() {
         glUseProgram(shaderProgram);
 
         glBindVertexArray(VAOs[0]);
-
-        // Uniform color blipping
-        float timeValue = glfwGetTime();
-        float greenValue = (glm::sin(timeValue) + 2.0f) / 3.0f;
-        int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
-        glUseProgram(shaderProgram);
-        glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
         glBindVertexArray(VAOs[1]);
         glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // Uniform color flickering
+        float timeValue = glfwGetTime();
+        float greenValue = (glm::sin(timeValue) + 2.0f) / 3.0f;
+
+        // Set time uniform
+        int timeLoc = glGetUniformLocation(shaderProgram, "time");
+        glUniform1f(timeLoc, timeValue);
+
+        // Set color uniforms
+        int col1Loc = glGetUniformLocation(shaderProgram, "color1");
+        int col2Loc = glGetUniformLocation(shaderProgram, "color2");
+        glUniform4f(col1Loc, 1.0f, 0.0f, 0.0f, 1.0f); // Red
+        glUniform4f(col2Loc, 0.0f, 0.0f, 1.0f, 1.0f); // blue
+
+        glUseProgram(shaderProgram);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
