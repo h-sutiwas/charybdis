@@ -24,7 +24,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/vec3.hpp>
-#include <glm/detail/func_trigonometric.inl>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "../include/shader.hpp"
+
 
 // Initialize functions
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -48,8 +52,8 @@ int main() {
         return -1;
     }
     // Set optional window hints
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window
@@ -68,85 +72,78 @@ int main() {
     }
     glViewport(0, 0, 960, 540);
 
-    // Maximum number of vertex attributes we're allowed to declare
-    // For OpenGL, there are at least 16 4-component vertex attributes available
-    int nrAttributes;
-    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
-    std::cout << "Maximum nr of vertex attributes supported: " << nrAttributes << std::endl;
+    Shader myShader("assets/shaders/vertex.glsl", "assets/shaders/fragment.glsl");
 
-    //---- For checking OpenGL version and GPU for rendering ----//
+    // Set up vertex data (and buffer(s)) and configure vertex attributes
+    float vertices[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+
+    /* Maximum number of vertex attributes we're allowed to declare
+    // For OpenGL, there are at least 16 4-component vertex attributes available
+    // int nrAttributes;
+    // glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &nrAttributes);
+    // std::cout << "Maximum nr of vertex attributes supported: " << nrAttributes << std::endl;
+    */
+
+    /*---- For checking OpenGL version and GPU for rendering ----
     // std::cout << "OpenGL version:   " << glGetString(GL_VERSION) << std::endl;
     // std::cout << "GPU Vendor:       " << glGetString(GL_VENDOR) << std::endl;
     // std::cout << "GPU Model:        " << glGetString(GL_RENDERER) << std::endl;
+    */
 
-    // Vertex Shader
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    std::string vertexShaderSource = readShaderSource("src/shaders/vertex.glsl");
-    const char *vShaderCode = vertexShaderSource.c_str();
-    glShaderSource(vertexShader, 1, &vShaderCode, nullptr);
-    glCompileShader(vertexShader);
-    checkShaderError(vertexShader); // Checking for shader compile-time errors
-
-    // Fragment Shader
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    std::string fragmentShaderSource = readShaderSource("src/shaders/fragment.glsl");
-    const char *fShaderCode = fragmentShaderSource.c_str();
-    glShaderSource(fragmentShader, 1, &fShaderCode, nullptr);
-    glCompileShader(fragmentShader);
-    checkShaderError(fragmentShader); // Check for shader compile-time errors
-
-    // Link Shaders
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    checkProgramError(shaderProgram, "SHADER"); // Check linking failed or not and retrieve corresponding log
-
-    // Delete shaders to clear up
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    // ------ Triangles ------
-    float firstTriangle[] = {
-        -0.9f, -0.5f, 0.0f, // left
-        -0.0f, -0.5f, 0.0f, // right
-        -0.45f, 0.5f, 0.0f, // top
-    };
-    float secondTriangle[] = {
-        0.0f, -0.5f, 0.0f, // left
-        0.9f, -0.5f, 0.0f, // right
-        0.45f, 0.5f, 0.0f // top
-    };
-
-    // Testing a vertex buffer objects to store large number of vertices in the
-    // GPU's memory
-
-    // first triangle setup
-    // --------------------
-    unsigned int VBOs[2], VAOs[2];
-    glGenVertexArrays(2, VAOs);
-    glGenBuffers(2, VBOs);
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
 
     // Binding the vertex array object first
-    glBindVertexArray(VAOs[0]);
-    glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(firstTriangle), firstTriangle, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), static_cast<void *>(nullptr));
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), static_cast<void *>(0));
     glEnableVertexAttribArray(0);
-
-    // second triangle setup
-    // ---------------------
-    glBindVertexArray(VAOs[1]);
-    glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(secondTriangle), secondTriangle, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, static_cast<void *>(nullptr));
-    glEnableVertexAttribArray(0);
-
-    // Unbind buffer
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // Unbind array
-    // glBindVertexArray(0);
 
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
@@ -155,31 +152,41 @@ int main() {
 
         // Rendering commands
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderProgram);
+        myShader.use();
 
-        glBindVertexArray(VAOs[0]);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // Create transformations
+        glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 view = glm::mat4(1.0f);
+        glm::mat4 projection = glm::mat4(1.0f);
+        model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+        view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        projection = glm::perspective(glm::radians(45.0f), (float)960 / (float)540, 0.1f, 100.0f);
 
-        glBindVertexArray(VAOs[1]);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // retrieve the matrix uniform locations
+        unsigned int modelLoc = glGetUniformLocation(myShader.ID, "model");
+        unsigned int viewLoc  = glGetUniformLocation(myShader.ID, "view");
+        // pass them to the shaders (3 different ways)
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+        // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
+        myShader.setMat4("projection", projection);
 
         // Uniform color flickering
         float timeValue = glfwGetTime();
-        float greenValue = (glm::sin(timeValue) + 2.0f) / 3.0f;
-
         // Set time uniform
-        int timeLoc = glGetUniformLocation(shaderProgram, "time");
+        int timeLoc = glGetUniformLocation(myShader.ID, "time");
         glUniform1f(timeLoc, timeValue);
-
         // Set color uniforms
-        int col1Loc = glGetUniformLocation(shaderProgram, "color1");
-        int col2Loc = glGetUniformLocation(shaderProgram, "color2");
+        int col1Loc = glGetUniformLocation(myShader.ID, "color1");
+        int col2Loc = glGetUniformLocation(myShader.ID, "color2");
         glUniform4f(col1Loc, 1.0f, 0.0f, 0.0f, 1.0f); // Red
         glUniform4f(col2Loc, 0.0f, 0.0f, 1.0f, 1.0f); // blue
 
-        glUseProgram(shaderProgram);
+        // Draw/Render box
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
@@ -187,9 +194,8 @@ int main() {
     }
 
     // Cleanup
-    glDeleteVertexArrays(2, VAOs);
-    glDeleteBuffers(2, VBOs);
-    glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
 
     glfwDestroyWindow(window);
     glfwTerminate();
