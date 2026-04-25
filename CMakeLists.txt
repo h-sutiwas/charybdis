@@ -12,14 +12,11 @@ find_package(glm CONFIG REQUIRED)
 
 # GLAD
 add_library(glad STATIC external/glad/src/glad.c
-        src/camera.cpp
-        src/camera.h)
+)
 target_include_directories(glad PUBLIC external/glad/include)
 
 # STB (Interface library - header only library)
-add_library(stb INTERFACE
-        src/camera.cpp
-        src/camera.h)
+add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE external/stb)
 
 # Fetch and Build ImGui
@@ -38,8 +35,6 @@ add_library(imgui STATIC
         ${imgui_SOURCE_DIR}/imgui_widgets.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-        src/camera.cpp
-        src/camera.h
 )
 
 target_include_directories(imgui PUBLIC
@@ -51,7 +46,6 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(charybdis ${SOURCES}
-        src/camera.cpp
-        src/camera.h)
+        include/shader.hpp)
 
 target_link_libraries(charybdis PRIVATE imgui glfw glad glm::glm OpenGL::GL stb)
