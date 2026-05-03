@@ -71,6 +71,8 @@ int main() {
         return -1;
     }
     glViewport(0, 0, 960, 540);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_ALWAYS);
 
     Shader myShader("assets/shaders/vertex.glsl", "assets/shaders/fragment.glsl");
 
@@ -160,6 +162,7 @@ int main() {
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = glm::mat4(1.0f);
         glm::mat4 projection = glm::mat4(1.0f);
+
         model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
         view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
         projection = glm::perspective(glm::radians(45.0f), (float)960 / (float)540, 0.1f, 100.0f);
@@ -167,20 +170,25 @@ int main() {
         // retrieve the matrix uniform locations
         unsigned int modelLoc = glGetUniformLocation(myShader.ID, "model");
         unsigned int viewLoc  = glGetUniformLocation(myShader.ID, "view");
+
+        // Set time uniform
+        int timeLoc = glGetUniformLocation(myShader.ID, "time");
+        // Set color uniforms
+        int col1Loc = glGetUniformLocation(myShader.ID, "color1");
+        int col2Loc = glGetUniformLocation(myShader.ID, "color2");
+
         // pass them to the shaders (3 different ways)
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-        // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
+        // note: currently we set the projection matrix each frame,
+        // but since the projection matrix rarely changes it's often
+        // best practice to set it outside the main loop only once.
         myShader.setMat4("projection", projection);
 
         // Uniform color flickering
         float timeValue = glfwGetTime();
-        // Set time uniform
-        int timeLoc = glGetUniformLocation(myShader.ID, "time");
+
         glUniform1f(timeLoc, timeValue);
-        // Set color uniforms
-        int col1Loc = glGetUniformLocation(myShader.ID, "color1");
-        int col2Loc = glGetUniformLocation(myShader.ID, "color2");
         glUniform4f(col1Loc, 1.0f, 0.0f, 0.0f, 1.0f); // Red
         glUniform4f(col2Loc, 0.0f, 0.0f, 1.0f, 1.0f); // blue
 
