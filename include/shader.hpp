@@ -5,6 +5,8 @@
 #ifndef CHARYBDIS_SHADER_HPP
 #define CHARYBDIS_SHADER_HPP
 
+#pragma once
+
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 

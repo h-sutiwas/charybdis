@@ -46,6 +46,7 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(charybdis ${SOURCES}
-        include/shader.hpp)
+        include/shader.hpp
+        include/camera.hpp)
 
 target_link_libraries(charybdis PRIVATE imgui glfw glad glm::glm OpenGL::GL stb)
