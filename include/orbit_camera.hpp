@@ -42,13 +42,13 @@ public:
     float getRadius() const;
 
 private:
-    glm::vec3 center_; // Center of the orbit camera sphere (the point upon which the camera looks)
-    glm::vec3 upVector_; // Up vector of the camera
-    float radius_; // Radius of the orbit camera sphere
-    float minRadius_; // Minimal radius of the orbit camera sphere (cannot fall below this value)
-    float maxRadius_; // Maximum radius of the orbit camera sphere (so that the camera will not be too far away)
-    float azimuthAngle_; // Azimuth angle on the orbit camera sphere
-    float polarAngle_{}; // Polar angle on the orbit camera sphere
+    glm::vec3 center_;
+    glm::vec3 upVector_;
+    float radius_;
+    float minRadius_;
+    float maxRadius_;
+    float azimuthAngle_;
+    float polarAngle_;
 
 };
 

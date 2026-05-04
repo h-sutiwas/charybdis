@@ -24,7 +24,6 @@ maxRadius_(maxRadius), azimuthAngle_(azimuthAngle), polarAngle_(polarAngle) {
 void orbitCamera::rotateAzimuth(const float radians) {
     azimuthAngle_ += radians;
 
-    // Keep azimuth angle within range <0..2PI) - it's not necessary, just to have it nicely output
     const auto fullCircle = 2.0f*glm::pi<float>();
     azimuthAngle_ = fmodf(azimuthAngle_, fullCircle);
     if (azimuthAngle_ < 0.0f) {
@@ -36,7 +35,6 @@ void orbitCamera::rotateAzimuth(const float radians) {
 void orbitCamera::rotatePolar(const float radians) {
     polarAngle_ += radians;
 
-    // Check if the angle hasn't exceeded quarter of a circle to prevent flip, add a bit of epsilon like 0.001 radians
     const auto polarCap = glm::pi<float>() / 2.0f - 0.001f;
     if (polarAngle_ > polarCap) {
         polarAngle_ = polarCap;
@@ -65,7 +63,7 @@ glm::vec3 orbitCamera::getEye() const {
     const auto sinePolar = glm::sin(polarAngle_);
     const auto cosinePolar = glm::cos(polarAngle_);
 
-    // Calculate eye position out of them
+    // Calculate eye position
     const auto x = center_.x + radius_ * cosinePolar * cosineAzimuth;
     const auto y = center_.y + radius_ * sinePolar;
     const auto z = center_.z + radius_ * cosinePolar * sineAzimuth;

@@ -34,6 +34,14 @@
 // Camera
 #include "orbit_camera.hpp"
 
+// Dear ImGUI
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
+
+
+
 // Initialize functions
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
