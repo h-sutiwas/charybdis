@@ -286,6 +286,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
 
 void mouse_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (ImGui::GetIO().WantCaptureMouse) return;
     auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -301,6 +302,8 @@ void mouse_callback(GLFWwindow* window, int button, int action, int mods) {
 
 
 void cursor_pos_callback(GLFWwindow* window, double xPos, double yPos) {
+    if (ImGui::GetIO().WantCaptureMouse) return;
+
     auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
     if (!leftMouseButtonDown) return;
 
