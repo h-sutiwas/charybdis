@@ -1,5 +1,5 @@
 //
-// Created by h-sutiwas on 2026-03-23.
+// Created by hamji on 2026-03-23.
 //
 
 // #define STB_IMAGE_IMPLEMENTATION
@@ -27,21 +27,32 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "../include/shader.hpp"
+// Shader
+#include "shader.hpp"
+#include "shader_utils.hpp"
 
+// Camera
+#include "orbit_camera.hpp"
 
 // Initialize functions
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
-void processInput(GLFWwindow *window);
+void process_input(GLFWwindow *window);
 
-std::string checkShaderType(GLuint shader);
+void mouse_callback(GLFWwindow* window, int button, int action, int mods);
 
-void checkShaderError(GLuint shader);
+void cursor_pos_callback(GLFWwindow* window, double xPos, double yPos);
 
-void checkProgramError(GLuint program, std::string programType);
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 
-std::string readShaderSource(const std::string &fileName);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+bool leftMouseButtonDown = false;
+bool wireframe = false;
+double lastMouseX = 0.0;
+double lastMouseY = 0.0;
+double sensitivity = 0.005f;
+
 
 int main() {
     // std::cout << "CWD:" << std::filesystem::current_path().string() << std::endl;
@@ -72,7 +83,24 @@ int main() {
     }
     glViewport(0, 0, 960, 540);
     glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_ALWAYS);
+    glDepthFunc(GL_LESS);
+
+    orbitCamera camera(
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f),
+        5.0f,
+        1.0f,
+        20.0f,
+        glm::radians(0.0f),
+        glm::radians(20.0f)
+    );
+
+    glfwSetWindowUserPointer(window, &camera);
+    // Set Mouse button callback
+    glfwSetMouseButtonCallback(window, mouse_callback);
+    glfwSetCursorPosCallback(window, cursor_pos_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
 
     Shader myShader("assets/shaders/vertex.glsl", "assets/shaders/fragment.glsl");
 
@@ -150,7 +178,7 @@ int main() {
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
         // Close if click ESC
-        processInput(window);
+        process_input(window);
 
         // Rendering commands
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -163,8 +191,9 @@ int main() {
         glm::mat4 view = glm::mat4(1.0f);
         glm::mat4 projection = glm::mat4(1.0f);
 
-        model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
-        view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        // model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+        // view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+        view  = camera.getViewMatrix();
         projection = glm::perspective(glm::radians(45.0f), (float)960 / (float)540, 0.1f, 100.0f);
 
         // retrieve the matrix uniform locations
@@ -212,7 +241,7 @@ int main() {
 }
 
 
-void processInput(GLFWwindow *window) {
+void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
@@ -224,59 +253,49 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 
-std::string checkShaderType(GLuint shader) {
-    GLint shaderType;
-    glGetShaderiv(shader, GL_SHADER_TYPE, &shaderType);
+void mouse_callback(GLFWwindow* window, int button, int action, int mods) {
+    auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
 
-    switch (shaderType) {
-        case GL_VERTEX_SHADER: return "GL_VERTEX_SHADER";
-        case GL_FRAGMENT_SHADER: return "GL_FRAGMENT_SHADER";
-        case GL_GEOMETRY_SHADER: return "GL_GEOMETRY_SHADER";
-        case GL_COMPUTE_SHADER: return "GL_COMPUTE_SHADER";
-        default: return "UNKNOWN_SHADER_TYPE";
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        leftMouseButtonDown = true;
     }
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+        leftMouseButtonDown = false;
+    }
+
+    glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
 }
 
 
-void checkShaderError(GLuint shader) {
-    int success;
-    char infoLog[512];
+void cursor_pos_callback(GLFWwindow* window, double xPos, double yPos) {
+    auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
+    if (!leftMouseButtonDown) return;
 
-    std::string shaderType = checkShaderType(shader);
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    float xOffset = xPos - lastMouseX;
+    float yOffset = yPos - lastMouseY;
 
-    if (!success) {
-        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        std::cerr << "ERROR::SHADER::" << shaderType << "::COMPILATION_FAILED\n" << infoLog << std::endl;
-    } else {
-        std::cout << "SUCCESSFULLY::COMPILED::SHADER::" << shaderType << infoLog << std::endl;
-    }
+    lastMouseX = xPos;
+    lastMouseY = yPos;
+
+    camera->rotateAzimuth(xOffset * sensitivity);
+    camera->rotatePolar(yOffset * sensitivity);
+};
+
+
+void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
+    auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
+    camera->zoom(yOffset);
 }
 
 
-void checkProgramError(GLuint program, std::string programType) {
-    int success;
-    char infoLog[512];
-
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(program, 512, nullptr, infoLog);
-        std::cerr << "ERROR::PROGRAM::" << programType << "::LINKING_FAILED\n" << infoLog << std::endl;
-    } else {
-        std::cout << "SUCCESSFULLY::LINKING::PROGRAM::" << programType << infoLog << std::endl;
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
+        wireframe = !wireframe;
+        if (wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
     }
-}
-
-
-std::string readShaderSource(const std::string &fileName) {
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        std::cerr << "CANNOT OPEN FILE" << std::endl;
-    }
-
-    std::stringstream ss;
-    ss << file.rdbuf();
-    file.close();
-
-    return ss.str();
 }
