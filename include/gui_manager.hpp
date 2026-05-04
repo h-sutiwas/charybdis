@@ -1,0 +1,8 @@
+//
+// Created by hamji on 5/4/2026.
+//
+
+#ifndef CHARYBDIS_GUI_MANAGER_HPP
+#define CHARYBDIS_GUI_MANAGER_HPP
+
+#endif //CHARYBDIS_GUI_MANAGER_HPP
