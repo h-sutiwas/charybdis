@@ -56,6 +56,16 @@ void orbitCamera::zoom(const float by) {
 }
 
 
+void orbitCamera::setRadius(float newRadius) {
+    radius_ = newRadius;
+    if (radius_ < minRadius_) {
+        radius_ = minRadius_;
+    } else if (radius_ > maxRadius_) {
+        radius_ = maxRadius_;
+    }
+}
+
+
 glm::vec3 orbitCamera::getEye() const {
     // Calculate sines / cosines of angles
     const auto sineAzimuth = glm::sin(azimuthAngle_);

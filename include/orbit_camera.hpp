@@ -31,6 +31,8 @@ public:
     void moveHorizontal(const float distance);
     void moveVertical(const float distance);
 
+    void setRadius(float newRadius);
+
     glm::mat4 getViewMatrix() const;
     glm::vec3 getEye() const;
     glm::vec3 getViewPoint() const;
