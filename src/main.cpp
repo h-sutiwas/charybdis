@@ -77,6 +77,7 @@ int main() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    // Camera Default Settings
     orbitCamera camera(
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
@@ -86,15 +87,24 @@ int main() {
         glm::radians(0.0f),
         glm::radians(20.0f)
     );
-
     glfwSetWindowUserPointer(window, &camera);
+
     // Register callback
     registerCallbacks(window);
 
-    Shader myShader("assets/shaders/vertex.glsl", "assets/shaders/fragment.glsl");
+    // Shader Linking
+    Shader myShader(
+        "assets/shaders/phong_vertex.glsl",
+        "assets/shaders/phong_fragment.glsl"
+        );
 
-    // Try Dome Mesh
-    Mesh domeMesh = generateDomeMesh(20, 20, 1.0f, 0.7f);
+    // Dome Mesh
+    Mesh domeMesh = generateDomeMesh(
+        20,
+        20,
+        1.0f,
+        0.7f
+        );
 
     /* Maximum number of vertex attributes we're allowed to declare
     // For OpenGL, there are at least 16 4-component vertex attributes available
@@ -109,7 +119,7 @@ int main() {
     // std::cout << "GPU Model:        " << glGetString(GL_RENDERER) << std::endl;
     */
 
-    // ImGUI Integration
+    // ImGui Integration
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
@@ -125,7 +135,7 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //
+        // ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -134,43 +144,32 @@ int main() {
 
         // Create transformations
         glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 view = glm::mat4(1.0f);
-        glm::mat4 projection = glm::mat4(1.0f);
+        glm::mat4 view = camera.getViewMatrix();
+        glm::mat4 projection = glm::perspective(
+            glm::radians(45.0f),
+            960.0f/540.0f,
+            0.1f,
+            100.0f
+            );
 
-        // model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
-        // view  = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-        view  = camera.getViewMatrix();
-        projection = glm::perspective(glm::radians(45.0f), (float)960 / (float)540, 0.1f, 100.0f);
-
-        // retrieve the matrix uniform locations
-        unsigned int modelLoc = glGetUniformLocation(myShader.ID, "model");
-        unsigned int viewLoc  = glGetUniformLocation(myShader.ID, "view");
-
-        // Set time uniform
-        int timeLoc = glGetUniformLocation(myShader.ID, "time");
-        // Set color uniforms
-        int col1Loc = glGetUniformLocation(myShader.ID, "color1");
-        int col2Loc = glGetUniformLocation(myShader.ID, "color2");
-
-        // pass them to the shaders (3 different ways)
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-        // note: currently we set the projection matrix each frame,
-        // but since the projection matrix rarely changes it's often
-        // best practice to set it outside the main loop only once.
+        // Model-View-Projection uniforms
+        myShader.setMat4("model", model);
+        myShader.setMat4("view", view);
         myShader.setMat4("projection", projection);
 
-        // Uniform color flickering
-        float timeValue = glfwGetTime();
+        // Normal matrix (for transforming normals to view space)
+        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(view * model)));
+        glUniformMatrix3fv(glGetUniformLocation(myShader.ID, "normalMatrix"), 1, GL_FALSE, &normalMatrix[0][0]);
 
-        glUniform1f(timeLoc, timeValue);
-        glUniform4f(col1Loc, 1.0f, 0.0f, 0.0f, 1.0f); // Red
-        glUniform4f(col2Loc, 0.0f, 0.0f, 1.0f, 1.0f); // blue
+        // Phong Lighting Uniforms
+        glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), 2.0f, 3.0f, 2.0f);
+        glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), 0.4f, 0.6f, 0.9f);
 
         // Draw/Render box
         domeMesh.draw();
 
-        //
+        // ImGui Camera Radius Slider
         ImGui::Begin("Camera Radius");
         ImGui::Text("Adjust Camera Radius");
         float radius = camera.getRadius();
