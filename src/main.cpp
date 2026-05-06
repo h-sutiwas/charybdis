@@ -40,6 +40,9 @@
 // Mesh
 #include "jellyfish_mesh.hpp"
 
+// Physics Simulation
+#include "particle_system.hpp"
+
 // Dear ImGUI
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -119,12 +122,40 @@ int main() {
     // std::cout << "GPU Model:        " << glGetString(GL_RENDERER) << std::endl;
     */
 
+    // Particle System
+    ParticleSystem particleSystem;
+    particleSystem.initFromMesh(domeMesh, 20);
+    particleSystem.buildConstraints(
+        20,
+        20,
+        0.8f,
+        0.3f,
+        16
+        );
+
+    std::vector<float> originalRestLengths;
+    for (const auto& c : particleSystem.constraints) {
+        originalRestLengths.push_back(c.restLength);
+    }
+
     // ImGui Integration
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
+
+    float repulsorStrength = 0.002f;
+    float contractionFreq = 1.0f;
+    float contractionAmp = 0.08f;
+    float damping = 0.99f;
+    int relaxIterations = 10;
+
+    Mesh originalMesh = domeMesh;
+    std::vector<glm::vec3> resetPositions;
+    for (const auto& v : domeMesh.vertices) {
+        resetPositions.push_back(v.Position);
+    }
 
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
@@ -165,6 +196,45 @@ int main() {
         glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), 2.0f, 3.0f, 2.0f);
         glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), 0.4f, 0.6f, 0.9f);
+
+        // ImGui Camera Radius Slider
+        ImGui::Begin("Physics Tuning");
+        ImGui::SliderFloat("Repulsor", &repulsorStrength, 0.0f, 0.1f);
+        ImGui::SliderFloat("Frequency", &contractionFreq, 0.1f, 3.0f);
+        ImGui::SliderFloat("Amplitude", &contractionAmp, 0.0f, 0.5f);
+        ImGui::SliderFloat("Damping", &damping, 0.9f, 1.0f);
+        ImGui::SliderInt("Iterations", &relaxIterations, 1, 16);
+        if (ImGui::Button("Reset Simulation")) {
+            particleSystem.reset(originalMesh);
+        }
+        ImGui::End();
+
+        float elapsed = glfwGetTime();
+        float fadeIn = glm::min(elapsed / 2.0f, 1.0f);
+
+        // Physics Update
+        particleSystem.applyRepulsor(
+            glm::vec3(0.0f, 0.35f, 0.0f),
+            repulsorStrength
+        );
+        particleSystem.applyContraction(
+            glfwGetTime(),
+            contractionFreq,
+            contractionAmp * fadeIn,
+            resetPositions
+        );
+        particleSystem.applyShapeMatching(resetPositions, 0.5f);
+        particleSystem.integrate(
+            1.0f / 60.0f,
+            damping
+        );
+        particleSystem.solveConstraints(
+            relaxIterations
+        );
+        particleSystem.writeToMesh(
+            domeMesh
+        );
+        domeMesh.updateBuffers();
 
         // Draw/Render box
         domeMesh.draw();

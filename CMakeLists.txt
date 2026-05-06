@@ -56,7 +56,9 @@ add_executable(charybdis ${SOURCES}
         include/mesh.hpp
         include/jellyfish_mesh.hpp
         src/mesh/mesh.cpp
-        src/mesh/jellyfish_mesh.cpp)
+        src/mesh/jellyfish_mesh.cpp
+        include/particle_system.hpp
+        src/simulation/particle_system.cpp)
 
 target_include_directories(charybdis PRIVATE include)
 
