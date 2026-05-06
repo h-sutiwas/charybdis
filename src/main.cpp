@@ -27,6 +27,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+// Handler
+#include <input_handler.hpp>
+
 // Shader
 #include "shader.hpp"
 #include "shader_utils.hpp"
@@ -34,31 +37,14 @@
 // Camera
 #include "orbit_camera.hpp"
 
+// Mesh
+#include "jellyfish_mesh.hpp"
+
 // Dear ImGUI
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-
-
-// Initialize functions
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-
-void process_input(GLFWwindow *window);
-
-void mouse_callback(GLFWwindow* window, int button, int action, int mods);
-
-void cursor_pos_callback(GLFWwindow* window, double xPos, double yPos);
-
-void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
-bool leftMouseButtonDown = false;
-bool wireframe = false;
-double lastMouseX = 0.0;
-double lastMouseY = 0.0;
-double sensitivity = 0.005f;
 
 
 int main() {
@@ -83,7 +69,6 @@ int main() {
     }
     // Make context current
     glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
@@ -103,58 +88,13 @@ int main() {
     );
 
     glfwSetWindowUserPointer(window, &camera);
-    // Set Mouse button callback
-    glfwSetMouseButtonCallback(window, mouse_callback);
-    glfwSetCursorPosCallback(window, cursor_pos_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glfwSetKeyCallback(window, key_callback);
+    // Register callback
+    registerCallbacks(window);
 
     Shader myShader("assets/shaders/vertex.glsl", "assets/shaders/fragment.glsl");
 
-    // Set up vertex data (and buffer(s)) and configure vertex attributes
-    float vertices[] = {
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-    };
+    // Try Dome Mesh
+    Mesh domeMesh = generateDomeMesh(20, 20, 1.0f, 0.7f);
 
     /* Maximum number of vertex attributes we're allowed to declare
     // For OpenGL, there are at least 16 4-component vertex attributes available
@@ -169,19 +109,6 @@ int main() {
     // std::cout << "GPU Model:        " << glGetString(GL_RENDERER) << std::endl;
     */
 
-    unsigned int VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    // Binding the vertex array object first
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), static_cast<void *>(0));
-    glEnableVertexAttribArray(0);
-
     // ImGUI Integration
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -192,7 +119,7 @@ int main() {
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
         // Close if click ESC
-        process_input(window);
+        processInput(window);
 
         // Rendering commands
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -241,12 +168,14 @@ int main() {
         glUniform4f(col2Loc, 0.0f, 0.0f, 1.0f, 1.0f); // blue
 
         // Draw/Render box
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        domeMesh.draw();
 
         //
-        ImGui::Begin("Flickering Box Red-Blue");
-        ImGui::Text("This is Box Red-Blue");
+        ImGui::Begin("Camera Radius");
+        ImGui::Text("Adjust Camera Radius");
+        float radius = camera.getRadius();
+        ImGui::SliderFloat("Radius", &radius, 1.0f, 20.0f);
+        camera.setRadius(radius);
         ImGui::End();
 
         ImGui::Render();
@@ -262,8 +191,7 @@ int main() {
     ImGui::DestroyContext();
 
     // Cleanup
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    domeMesh.cleanup();
     glDeleteProgram(myShader.ID);
 
     glfwDestroyWindow(window);
@@ -272,65 +200,3 @@ int main() {
     return 0;
 }
 
-
-void process_input(GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, GL_TRUE);
-    }
-}
-
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
-
-void mouse_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (ImGui::GetIO().WantCaptureMouse) return;
-    auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
-
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        leftMouseButtonDown = true;
-    }
-
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-        leftMouseButtonDown = false;
-    }
-
-    glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
-}
-
-
-void cursor_pos_callback(GLFWwindow* window, double xPos, double yPos) {
-    if (ImGui::GetIO().WantCaptureMouse) return;
-
-    auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
-    if (!leftMouseButtonDown) return;
-
-    float xOffset = xPos - lastMouseX;
-    float yOffset = yPos - lastMouseY;
-
-    lastMouseX = xPos;
-    lastMouseY = yPos;
-
-    camera->rotateAzimuth(xOffset * sensitivity);
-    camera->rotatePolar(yOffset * sensitivity);
-};
-
-
-void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
-    auto* camera = static_cast<orbitCamera*>(glfwGetWindowUserPointer(window));
-    camera->zoom(yOffset);
-}
-
-
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_X && action == GLFW_PRESS) {
-        wireframe = !wireframe;
-        if (wireframe) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        } else {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        }
-    }
-}

@@ -52,8 +52,11 @@ target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 add_executable(charybdis ${SOURCES}
-        include/gui_manager.hpp
-        src/gui/gui_manager.cpp)
+        src/utils/input_handler.cpp
+        include/mesh.hpp
+        include/jellyfish_mesh.hpp
+        src/mesh/mesh.cpp
+        src/mesh/jellyfish_mesh.cpp)
 
 target_include_directories(charybdis PRIVATE include)
 
