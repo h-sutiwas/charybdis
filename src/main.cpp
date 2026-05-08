@@ -78,7 +78,9 @@ int main() {
     }
     glViewport(0, 0, 960, 540);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
     glDepthFunc(GL_LESS);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Camera Default Settings
     orbitCamera camera(
@@ -98,7 +100,7 @@ int main() {
     // Shader Linking
     Shader myShader(
         "assets/shaders/phong_vertex.glsl",
-        "assets/shaders/phong_fragment.glsl"
+        "assets/shaders/jelly_fragment.glsl"
         );
 
     // Dome Mesh
@@ -137,6 +139,11 @@ int main() {
     for (const auto& c : particleSystem.constraints) {
         originalRestLengths.push_back(c.restLength);
     }
+
+    // Initial Jellyfish Shade
+    float fresnelPower = 2.0f;
+    float absorptionCoeff = 1.5f;
+    float ambientStrength = 0.15f;
 
     // ImGui Integration
     ImGui::CreateContext();
@@ -196,6 +203,11 @@ int main() {
         glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), 2.0f, 3.0f, 2.0f);
         glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), 0.4f, 0.6f, 0.9f);
+        // Additional Fresnel and thickness influenced
+        glUniform3fv(glGetUniformLocation(myShader.ID, "viewPos"), 1, glm::value_ptr(camera.getEye()));
+        glUniform1f(glGetUniformLocation(myShader.ID, "fresnelPower"), fresnelPower);
+        glUniform1f(glGetUniformLocation(myShader.ID, "absorptionCoeff"), absorptionCoeff);
+        glUniform1f(glGetUniformLocation(myShader.ID, "ambientStrength"), ambientStrength);
 
         // ImGui Camera Radius Slider
         ImGui::Begin("Physics Tuning");
