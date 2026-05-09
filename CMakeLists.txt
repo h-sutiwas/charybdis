@@ -11,16 +11,11 @@ find_package(glfw3 REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
 # GLAD
-add_library(glad STATIC external/glad/src/glad.c
-        include/gui_manager.hpp
-        src/gui/gui_manager.cpp
-)
+add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 # STB (Interface library - header only library)
-add_library(stb INTERFACE
-        include/gui_manager.hpp
-        src/gui/gui_manager.cpp)
+add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE external/stb)
 
 # Fetch and Build ImGui
@@ -39,8 +34,6 @@ add_library(imgui STATIC
         ${imgui_SOURCE_DIR}/imgui_widgets.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-        include/gui_manager.hpp
-        src/gui/gui_manager.cpp
 )
 
 target_include_directories(imgui PUBLIC
@@ -51,14 +44,7 @@ target_include_directories(imgui PUBLIC
 target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
-add_executable(charybdis ${SOURCES}
-        src/utils/input_handler.cpp
-        include/mesh.hpp
-        include/jellyfish_mesh.hpp
-        src/mesh/mesh.cpp
-        src/mesh/jellyfish_mesh.cpp
-        include/particle_system.hpp
-        src/simulation/particle_system.cpp)
+add_executable(charybdis ${SOURCES})
 
 target_include_directories(charybdis PRIVATE include)
 

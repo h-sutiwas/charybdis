@@ -66,6 +66,20 @@ void orbitCamera::setRadius(float newRadius) {
 }
 
 
+void orbitCamera::setAzimuth(float radians) {
+    azimuthAngle_ = radians;
+    const auto fullCircle = 2.0f * glm::pi<float>();
+    azimuthAngle_ = fmodf(azimuthAngle_, fullCircle);
+    if (azimuthAngle_ < 0.0f) azimuthAngle_ = fullCircle + azimuthAngle_;
+}
+
+
+void orbitCamera::setPolar(float radians) {
+    const auto cap = glm::pi<float>() / 2.0f - 0.001f;
+    polarAngle_ = glm::clamp(radians, -cap, cap);
+}
+
+
 glm::vec3 orbitCamera::getEye() const {
     // Calculate sines / cosines of angles
     const auto sineAzimuth = glm::sin(azimuthAngle_);

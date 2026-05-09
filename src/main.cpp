@@ -28,7 +28,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 // Handler
-#include <input_handler.hpp>
+#include "input_handler.hpp"
+#include "gui_manager.hpp"
 
 // Shader
 #include "shader.hpp"
@@ -88,15 +89,20 @@ int main() {
     glDepthFunc(GL_LESS);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    PhysicsParams physicsParams;
+    VisualParams visualParams;
+    CameraParams cameraParams;
+    bool wireframe = false;
+    bool resetSim = false;
+
     // Camera Default Settings
     orbitCamera camera(
         glm::vec3(0.0f, 0.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
-        5.0f,
-        1.0f,
-        20.0f,
-        glm::radians(0.0f),
-        glm::radians(20.0f)
+        cameraParams.radius,
+        1.0f, 20.0f,
+        cameraParams.azimuth,
+        cameraParams.polar
     );
     glfwSetWindowUserPointer(window, &camera);
 
@@ -145,23 +151,13 @@ int main() {
         24
         );
 
-    // Initial Jellyfish Shade
-    float fresnelPower = 2.0f;
-    float absorptionCoeff = 1.5f;
-    float ambientStrength = 0.15f;
-
     // ImGui Integration
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
-
-    float repulsorStrength = 0.025f;
-    float contractionFreq = 1.0f;
-    float contractionAmp = 0.25f;
-    float damping = 0.99f;
-    int relaxIterations = 10;
+    GuiManager guiManager(physicsParams, visualParams, cameraParams, camera);
 
     Mesh originalMesh = domeMesh;
     std::vector<glm::vec3> resetPositions;
@@ -204,10 +200,9 @@ int main() {
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = camera.getViewMatrix();
         glm::mat4 projection = glm::perspective(
-            glm::radians(45.0f),
+            glm::radians(cameraParams.fov),
             960.0f / 540.0f,
-            0.1f,
-            100.0f
+            0.1f, 100.0f
             );
 
         // Normal matrix (for transforming normals to view space)
@@ -222,47 +217,36 @@ int main() {
         glUniformMatrix3fv(glGetUniformLocation(myShader.ID, "normalMatrix"), 1, GL_FALSE, &normalMatrix[0][0]);
 
         // Phong Lighting Uniforms
-        glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), 2.0f, 3.0f, 2.0f);
-        glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), 0.4f, 0.6f, 0.9f);
-        // Additional Fresnel and thickness influenced
-        glUniform3fv(glGetUniformLocation(myShader.ID, "viewPos"), 1, glm::value_ptr(camera.getEye()));
-        glUniform1f(glGetUniformLocation(myShader.ID, "fresnelPower"), fresnelPower);
-        glUniform1f(glGetUniformLocation(myShader.ID, "absorptionCoeff"), absorptionCoeff);
-        glUniform1f(glGetUniformLocation(myShader.ID, "ambientStrength"), ambientStrength);
+        glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), visualParams.lightPos[0], visualParams.lightPos[1], visualParams.lightPos[2]);
+        glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), visualParams.lightColor[0], visualParams.lightColor[1], visualParams.lightColor[2]);
+        glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
+        myShader.setFloat("fresnelPower", visualParams.fresnelPower);
+        myShader.setFloat("absorptionCoeff", visualParams.absorptionCoeff);
+        myShader.setFloat("ambientStrength", visualParams.ambientStrength);
 
-        // ImGui Camera Radius Slider
-        ImGui::Begin("Physics Tuning");
-        ImGui::SliderFloat("Repulsor", &repulsorStrength, 0.0f, 0.1f);
-        ImGui::SliderFloat("Frequency", &contractionFreq, 0.1f, 3.0f);
-        ImGui::SliderFloat("Amplitude", &contractionAmp, 0.0f, 0.5f);
-        ImGui::SliderFloat("Damping", &damping, 0.9f, 1.0f);
-        ImGui::SliderInt("Iterations", &relaxIterations, 1, 16);
-        if (ImGui::Button("Reset Simulation")) {
-            particleSystem.reset(originalMesh);
-        }
-        ImGui::End();
+        // Eye View
+        glUniform3fv(glGetUniformLocation(myShader.ID, "viewPos"), 1, glm::value_ptr(camera.getEye()));
 
         float elapsed = glfwGetTime();
-        float fadeIn = glm::min(elapsed / 2.0f, 1.0f);
+        float fadeIn = glm::min(elapsed / physicsParams.fadeInDuration, 1.0f);
 
         // Physics Update
         particleSystem.applyRepulsor(
             glm::vec3(0.0f, 0.2f, 0.0f),
-            repulsorStrength
+            physicsParams.repulsorStrength
         );
         particleSystem.applyContraction(
             glfwGetTime(),
-            contractionFreq,
-            contractionAmp * fadeIn,
+            physicsParams.contractionFreq,
+            physicsParams.contractionAmp * fadeIn,
             resetPositions
         );
-        particleSystem.applyShapeMatching(resetPositions, 0.5f);
+        particleSystem.applyShapeMatching(resetPositions, physicsParams.shapeMatchingStrength);
         particleSystem.integrate(
             1.0f / 60.0f,
-            damping
+            physicsParams.damping
         );
-        particleSystem.solveConstraints(relaxIterations);
+        particleSystem.solveConstraints(physicsParams.relaxIterations);
         particleSystem.writeToMesh(domeMesh);
         domeMesh.updateBuffers();
 
@@ -278,7 +262,7 @@ int main() {
         tentacleShader.setMat4("model", model);
         tentacleShader.setMat4("view", view);
         tentacleShader.setMat4("projection", projection);
-        glUniform3f(glGetUniformLocation(tentacleShader.ID, "tentacleColor"), 0.4f, 0.6f, 0.9f);
+        glUniform3f(glGetUniformLocation(tentacleShader.ID, "tentacleColor"), visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
 
         glBindVertexArray(tentacleVAO);
         for (int t = 0; t < tentacleCount; ++t) {
@@ -286,13 +270,13 @@ int main() {
         }
         glBindVertexArray(0);
 
-        // ImGui Camera Radius Slider
-        ImGui::Begin("Camera Radius");
-        ImGui::Text("Adjust Camera Radius");
-        float radius = camera.getRadius();
-        ImGui::SliderFloat("Radius", &radius, 1.0f, 20.0f);
-        camera.setRadius(radius);
-        ImGui::End();
+        wireframe ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE) : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        if (resetSim) particleSystem.reset(originalMesh);
+
+        guiManager.render(
+            resetSim,
+            wireframe
+        );
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -32,6 +32,8 @@ public:
     void moveVertical(const float distance);
 
     void setRadius(float newRadius);
+    void setAzimuth(float radians);
+    void setPolar(float radians);
 
     glm::mat4 getViewMatrix() const;
     glm::vec3 getEye() const;
