@@ -64,7 +64,13 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create window
-    GLFWwindow *window = glfwCreateWindow(960, 540, "Charybdis", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(
+        960,
+        540,
+        "Charybdis",
+        nullptr,
+        nullptr
+        );
     if (!window) {
         std::cerr << "Failed to create GLFW window\n" << std::endl;
         glfwTerminate();
@@ -102,13 +108,17 @@ int main() {
         "assets/shaders/phong_vertex.glsl",
         "assets/shaders/jelly_fragment.glsl"
         );
+    Shader tentacleShader(
+        "assets/shaders/tentacle_vertex.glsl",
+        "assets/shaders/tentacle_fragment.glsl"
+    );
 
     // Dome Mesh
     Mesh domeMesh = generateDomeMesh(
-        20,
-        20,
-        1.0f,
-        0.7f
+        30,
+        30,
+        1.5f,
+        0.4f
         );
 
     /* Maximum number of vertex attributes we're allowed to declare
@@ -126,19 +136,14 @@ int main() {
 
     // Particle System
     ParticleSystem particleSystem;
-    particleSystem.initFromMesh(domeMesh, 20);
+    particleSystem.initFromMesh(domeMesh, 30);
     particleSystem.buildConstraints(
-        20,
-        20,
+        30,
+        30,
         0.8f,
         0.3f,
-        16
+        24
         );
-
-    std::vector<float> originalRestLengths;
-    for (const auto& c : particleSystem.constraints) {
-        originalRestLengths.push_back(c.restLength);
-    }
 
     // Initial Jellyfish Shade
     float fresnelPower = 2.0f;
@@ -152,9 +157,9 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
-    float repulsorStrength = 0.002f;
+    float repulsorStrength = 0.025f;
     float contractionFreq = 1.0f;
-    float contractionAmp = 0.08f;
+    float contractionAmp = 0.25f;
     float damping = 0.99f;
     int relaxIterations = 10;
 
@@ -164,13 +169,30 @@ int main() {
         resetPositions.push_back(v.Position);
     }
 
+    // Tentacles
+    const int tentacleCount = 12;
+    const int tentacleParticles = 10;
+    particleSystem.generateTentacles(tentacleCount, tentacleParticles, 0.15f);
+
+    GLuint tentacleVAO, tentacleVBO;
+    glGenVertexArrays(1, &tentacleVAO);
+    glGenBuffers(1, &tentacleVBO);
+    glBindVertexArray(tentacleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, tentacleVBO);
+
+    int tentaclePosCount = tentacleCount * (tentacleParticles + 1);
+    glBufferData(GL_ARRAY_BUFFER, tentaclePosCount * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
         // Close if click ESC
         processInput(window);
 
         // Rendering commands
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // ImGui
@@ -178,25 +200,25 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        myShader.use();
-
         // Create transformations
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 view = camera.getViewMatrix();
         glm::mat4 projection = glm::perspective(
             glm::radians(45.0f),
-            960.0f/540.0f,
+            960.0f / 540.0f,
             0.1f,
             100.0f
             );
 
+        // Normal matrix (for transforming normals to view space)
+        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+
         // Model-View-Projection uniforms
+        myShader.use();
         myShader.setMat4("model", model);
         myShader.setMat4("view", view);
         myShader.setMat4("projection", projection);
 
-        // Normal matrix (for transforming normals to view space)
-        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(view * model)));
         glUniformMatrix3fv(glGetUniformLocation(myShader.ID, "normalMatrix"), 1, GL_FALSE, &normalMatrix[0][0]);
 
         // Phong Lighting Uniforms
@@ -226,7 +248,7 @@ int main() {
 
         // Physics Update
         particleSystem.applyRepulsor(
-            glm::vec3(0.0f, 0.35f, 0.0f),
+            glm::vec3(0.0f, 0.2f, 0.0f),
             repulsorStrength
         );
         particleSystem.applyContraction(
@@ -240,16 +262,29 @@ int main() {
             1.0f / 60.0f,
             damping
         );
-        particleSystem.solveConstraints(
-            relaxIterations
-        );
-        particleSystem.writeToMesh(
-            domeMesh
-        );
+        particleSystem.solveConstraints(relaxIterations);
+        particleSystem.writeToMesh(domeMesh);
         domeMesh.updateBuffers();
 
         // Draw/Render box
         domeMesh.draw();
+
+        // Draw tentacles
+        auto tentPos = particleSystem.getTentaclePositions();
+        glBindBuffer(GL_ARRAY_BUFFER, tentacleVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(tentPos.size() * sizeof(glm::vec3)), tentPos.data());
+
+        tentacleShader.use();
+        tentacleShader.setMat4("model", model);
+        tentacleShader.setMat4("view", view);
+        tentacleShader.setMat4("projection", projection);
+        glUniform3f(glGetUniformLocation(tentacleShader.ID, "tentacleColor"), 0.4f, 0.6f, 0.9f);
+
+        glBindVertexArray(tentacleVAO);
+        for (int t = 0; t < tentacleCount; ++t) {
+            glDrawArrays(GL_LINE_STRIP, t * (tentacleParticles + 1), tentacleParticles + 1);
+        }
+        glBindVertexArray(0);
 
         // ImGui Camera Radius Slider
         ImGui::Begin("Camera Radius");
@@ -273,7 +308,10 @@ int main() {
 
     // Cleanup
     domeMesh.cleanup();
+    glDeleteVertexArrays(1, &tentacleVAO);
+    glDeleteBuffers(1, &tentacleVBO);
     glDeleteProgram(myShader.ID);
+    glDeleteProgram(tentacleShader.ID);
 
     glfwDestroyWindow(window);
     glfwTerminate();

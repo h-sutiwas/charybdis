@@ -45,10 +45,11 @@ void ParticleSystem::buildConstraints(int rings, int slices, float hoodStiffness
             int nextRing = (ring + 1) * (slices + 1) + slice;
             int nextDiagonal = (ring + 1) * (slices + 1) + (slice + 1);
 
-            float stiffness = (ring >= rimStartRing) ? rimStiffness : hoodStiffness;
+            // float stiffness = (ring >= rimStartRing) ? rimStiffness : hoodStiffness;
 
             if (slice + 1 <= slices) {
-                auto key = std::make_pair(std::min(current, nextSlice), std::max(current, nextSlice));
+		        int hTarget = (slice + 1 == slices) ? ring * (slices + 1) : nextSlice;
+                auto key = std::make_pair(std::min(current, hTarget), std::max(current, hTarget));
                 constraintMap[key] = ConstraintType::Horizontal;
             }
 
@@ -58,7 +59,8 @@ void ParticleSystem::buildConstraints(int rings, int slices, float hoodStiffness
             }
 
             if (ring + 1 <= rings && slice + 1 <= slices) {
-                auto key = std::make_pair(std::min(current, nextDiagonal), std::max(current, nextDiagonal));
+                int dTarget = (slice + 1 == slices) ? (ring + 1) * (slices + 1) : nextDiagonal;
+                auto key = std::make_pair(std::min(current, dTarget), std::max(current, dTarget));
                 constraintMap[key] = ConstraintType::Diagonal;
             }
         }
@@ -111,12 +113,12 @@ void ParticleSystem::solveConstraints(int iterations) {
 
 void ParticleSystem::applyContraction(float time, float frequency, float amplitude, const std::vector<glm::vec3>& restPositions) {
     float wave = glm::sin(time * frequency * 2.0f * glm::pi<float>());
-    glm::vec3 center = glm::vec3(0.0f, 0.35f, 0.0f);  // center of bell interior
+    glm::vec3 center = glm::vec3(0.0f, 0.2f, 0.0f);  // center of bell interior
 
-    for (size_t i = 0; i < particles.size(); ++i) {
+    for (size_t i = 0; i < restPositions.size(); ++i) {
         if (particles[i].pinned) continue;
 
-        // Use REST position for stable direction
+        // Use Rest position for stable direction
         glm::vec3 toCenter = center - restPositions[i];
         float dist = glm::length(toCenter);
         if (dist < 1e-6f) continue;
@@ -144,7 +146,7 @@ void ParticleSystem::applyRepulsor(glm::vec3 center, float strength) {
 
 
 void ParticleSystem::writeToMesh(Mesh& mesh) {
-    for (size_t i = 0; i < particles.size(); ++i) {
+    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
         mesh.vertices[i].Position = particles[i].position;
     }
 
@@ -158,7 +160,7 @@ void ParticleSystem::writeToMesh(Mesh& mesh) {
 
 
 void ParticleSystem::reset(const Mesh& originalMesh) {
-    for (size_t i = 0; i < particles.size(); ++i) {
+    for (size_t i = 0; i < originalMesh.vertices.size(); ++i) {
         particles[i].position = originalMesh.vertices[i].Position;
         particles[i].previousPosition = originalMesh.vertices[i].Position;
         particles[i].acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -167,7 +169,7 @@ void ParticleSystem::reset(const Mesh& originalMesh) {
 
 
 void ParticleSystem::applyShapeMatching(const std::vector<glm::vec3>& resetPositions, float strength) {
-    for (size_t i = 0; i < particles.size(); ++i) {
+    for (size_t i = 0; i < resetPositions.size(); ++i) {
         if (particles[i].pinned) continue;
         glm::vec3 toReset = resetPositions[i] - particles[i].position;
         particles[i].acceleration += toReset * strength;
@@ -182,4 +184,66 @@ void ParticleSystem::syncSeamParticles() {
         particles[last].position = particles[first].position;
         particles[last].previousPosition = particles[first].previousPosition;
     }
+}
+
+
+void ParticleSystem::generateTentacles(int count, int particlesPerTentacle, float stiffness) {
+    tentacleStartIndex_ = static_cast<int>(particles.size());
+    tentacleCount_ = count;
+    tentacleParticlesPerTentacle_ = particlesPerTentacle;
+    tentacleRimIndices_.clear();
+
+    const float spacing = 0.1f;
+
+    for (int t = 0; t < count; ++t) {
+	    int slice = static_cast<int>(std::round(static_cast<float>(t) * static_cast<float>(slices_) / static_cast<float>(count))) % slices_;
+	    int rimIndex = rings_ * (slices_ + 1) + slice;
+	    tentacleRimIndices_.push_back(rimIndex);
+	    glm::vec3 rootPos = particles[rimIndex].position;
+
+	    for (int p = 0; p < particlesPerTentacle; ++p) {
+	        Particle particle{};
+	        particle.position = rootPos + glm::vec3(0.0f, -static_cast<float>(p + 1) * spacing, 0.0f);
+	        particle.previousPosition = particle.position;
+	        particle.acceleration = glm::vec3(0.0f);
+	        particle.pinned = false;
+	        particles.push_back(particle);
+	    }
+
+	    addConstraint(
+	        rimIndex,
+	        tentacleStartIndex_ + t * particlesPerTentacle,
+	        stiffness,
+	        ConstraintType::Vertical
+	        );
+
+        for (int p = 0; p < particlesPerTentacle - 1; ++p) {
+            addConstraint(
+                tentacleStartIndex_ + t * particlesPerTentacle + p,
+                tentacleStartIndex_ + t * particlesPerTentacle + p + 1,
+                stiffness,
+                ConstraintType::Vertical
+            );
+        }
+    }
+}
+
+
+void ParticleSystem::applyTentacleGravity(float g) {
+    for (int i = tentacleStartIndex_; i < static_cast<int>(particles.size()); ++i) {
+	    particles[i].acceleration += glm::vec3(0.0f, -g, 0.0f);
+    }
+}
+
+
+std::vector<glm::vec3> ParticleSystem::getTentaclePositions() const {
+    std::vector<glm::vec3> positions;
+    positions.reserve(tentacleCount_ * (tentacleParticlesPerTentacle_ + 1));
+    for (int t = 0; t < tentacleCount_; ++t) {
+	    positions.push_back(particles[tentacleRimIndices_[t]].position);
+	    for (int p = 0; p < tentacleParticlesPerTentacle_; ++p) {
+	        positions.push_back(particles[tentacleStartIndex_ + t * tentacleParticlesPerTentacle_ + p].position);
+	    }
+    }
+    return positions;
 }

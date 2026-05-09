@@ -79,9 +79,22 @@ public:
 
     void syncSeamParticles();
 
+    void generateTentacles(int count, int particlesPerTentacle, float stiffness);
+
+    void applyTentacleGravity(float g);
+
+    std::vector<glm::vec3> getTentaclePositions() const;
+
+    int getTentacleCount() const { return tentacleCount_; }
+    int getTentacleParticlesPerTentacle() const { return tentacleParticlesPerTentacle_; }
+
 private:
     int rings_;
     int slices_;
+    int tentacleStartIndex_ = 0;
+    int tentacleCount_ = 0;
+    int tentacleParticlesPerTentacle_ = 0;
+    std::vector<int> tentacleRimIndices_;
 };
 
 
