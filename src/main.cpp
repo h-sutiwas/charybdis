@@ -116,6 +116,7 @@ int main() {
         );
     Shader tentacleShader(
         "assets/shaders/tentacle_vertex.glsl",
+        "assets/shaders/tentacle_geometry.glsl",
         "assets/shaders/tentacle_fragment.glsl"
     );
 
@@ -262,6 +263,9 @@ int main() {
         tentacleShader.setMat4("model", model);
         tentacleShader.setMat4("view", view);
         tentacleShader.setMat4("projection", projection);
+
+        tentacleShader.setFloat("tubeRadius", visualParams.tubeRadius);
+
         glUniform3f(glGetUniformLocation(tentacleShader.ID, "tentacleColor"), visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
 
         glBindVertexArray(tentacleVAO);

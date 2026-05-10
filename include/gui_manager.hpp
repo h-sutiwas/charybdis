@@ -23,6 +23,7 @@ struct PhysicsParams {
 };
 
 struct VisualParams {
+    float tubeRadius = 0.02f;
     float fresnelPower = 2.0f;
     float absorptionCoeff = 1.5f;
     float ambientStrength = 0.15f;
