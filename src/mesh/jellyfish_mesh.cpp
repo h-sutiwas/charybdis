@@ -12,6 +12,7 @@ Mesh generateDomeMesh(int rings, int slices, float radiusX, float radiusY) {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
+    const float perturbAmp = 0.015f;
     for (int ring = 0; ring <= rings; ++ring) {
         float phi = (glm::pi<float>() / 2) * ring / rings;
 
@@ -28,6 +29,12 @@ Mesh generateDomeMesh(int rings, int slices, float radiusX, float radiusY) {
             float ny = y / (radiusY * radiusY);
             float nz = z / (radiusX * radiusX);
             glm::vec3 normal = glm::normalize(glm::vec3(nx, ny, nz));
+
+            float perturbR = glm::sin(3.0f * theta) * glm::sin(2.0f * phi) * perturbAmp;
+            float perturbY = glm::sin(2.0f * theta + 1.7f) * glm::sin(2.0f * phi) * 0.5f * perturbAmp;
+            x += perturbR * glm::cos(theta);
+            z += perturbR * glm::sin(theta);
+            y += perturbY;
 
             vertices.push_back(Vertex{glm::vec3(x, y, z), normal });
         }
