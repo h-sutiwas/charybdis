@@ -12,19 +12,19 @@
 
 
 struct PhysicsParams {
-    float repulsorStrength = 0.025f;
-    float contractionFreq = 1.0f;
-    float contractionAmp = 0.25f;
+    float repulsorStrength = 0.50f;
+    float contractionFreq = 0.70f;
+    float contractionAmp = 0.40f;
     float damping = 0.99f;
-    int relaxIterations = 10;
-    float shapeMatchingStrength = 0.5f;
-    float tentacleStiffness = 0.18f;
-    float tentacleGravity = 0.05f;
-    float tentacleInward = 0.05f;
-    float apexLift = 0.5f;
-    float apexMaxLift = 0.05f;
-    float fadeInDuration = 2.0f;
-    float powerStrokeFraction = 0.3f;
+    int relaxIterations = 4;
+    float shapeMatchingStrength = 0.8f;
+    float tentacleStiffness = 0.345f;
+    float tentacleGravity = 0.125f;
+    float tentacleInward = 0.02f;
+    float apexLift = 1.3f;
+    float apexMaxLift = 0.13f;
+    float fadeInDuration = 3.7f;
+    float powerStrokeFraction = 0.4f;
     float tentacleDamping = 0.95f;
     float tentacleBuoyancy = 0.01f;
 };

@@ -132,8 +132,8 @@ int main() {
 
     // Dome Mesh
     Mesh domeMesh = generateDomeMesh(
-        30,
-        30,
+        60,
+        60,
         1.5f,
         0.8f
         );
@@ -153,10 +153,10 @@ int main() {
 
     // Particle System
     ParticleSystem particleSystem;
-    particleSystem.initFromMesh(domeMesh, 30);
+    particleSystem.initFromMesh(domeMesh, 60);
     particleSystem.buildConstraints(
-        30,
-        30,
+        60,
+        60,
         0.8f,
         0.3f,
         24
@@ -241,8 +241,14 @@ int main() {
         glDepthMask(GL_FALSE);
         glDisable(GL_DEPTH_TEST);
         backgroundShader.use();
-        glUniform3fv(glGetUniformLocation(backgroundShader.ID, "bgTopColor"),    1, glm::value_ptr(visualParams.bgTopColor));
-        glUniform3fv(glGetUniformLocation(backgroundShader.ID, "bgBottomColor"), 1, glm::value_ptr(visualParams.bgBottomColor));
+        glUniform3fv(glGetUniformLocation(backgroundShader.ID, "bgTopColor"),
+            1,
+            glm::value_ptr(visualParams.bgTopColor)
+            );
+        glUniform3fv(glGetUniformLocation(backgroundShader.ID, "bgBottomColor"),
+            1,
+            glm::value_ptr(visualParams.bgBottomColor)
+            );
         glBindVertexArray(bgVAO);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
@@ -275,25 +281,47 @@ int main() {
         myShader.setMat4("view", view);
         myShader.setMat4("projection", projection);
 
-        glUniformMatrix3fv(glGetUniformLocation(myShader.ID, "normalMatrix"), 1, GL_FALSE, &normalMatrix[0][0]);
+        glUniformMatrix3fv(glGetUniformLocation(myShader.ID, "normalMatrix"),
+            1,
+            GL_FALSE,
+            &normalMatrix[0][0]
+            );
 
         // Shading Fresnel
-        glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), visualParams.lightPos[0], visualParams.lightPos[1], visualParams.lightPos[2]);
-        glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), visualParams.lightColor[0], visualParams.lightColor[1], visualParams.lightColor[2]);
-        glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
+        glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"),
+            visualParams.lightPos[0],
+            visualParams.lightPos[1],
+            visualParams.lightPos[2]
+            );
+        glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"),
+            visualParams.lightColor[0],
+            visualParams.lightColor[1],
+            visualParams.lightColor[2]
+            );
+        glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"),
+            visualParams.bodyColor[0],
+            visualParams.bodyColor[1],
+            visualParams.bodyColor[2]
+            );
         myShader.setFloat("fresnelPower", visualParams.fresnelPower);
         myShader.setFloat("absorptionCoeff", visualParams.absorptionCoeff);
         myShader.setFloat("ambientStrength", visualParams.ambientStrength);
 
         // Eye View
-        glUniform3fv(glGetUniformLocation(myShader.ID, "viewPos"), 1, glm::value_ptr(camera.getEye()));
+        glUniform3fv(glGetUniformLocation(myShader.ID, "viewPos"),
+            1,
+            glm::value_ptr(camera.getEye())
+            );
 
         // Shader-side time & bell-pattern uniforms
         myShader.setFloat("time", elapsedNow);
         myShader.setFloat("contractionFreq", physicsParams.contractionFreq);
         myShader.setFloat("iridescence", visualParams.iridescence);
         myShader.setFloat("bioStrength", visualParams.bioStrength);
-        glUniform3fv(glGetUniformLocation(myShader.ID, "bioColor"), 1, glm::value_ptr(visualParams.bioColor));
+        glUniform3fv(glGetUniformLocation(myShader.ID, "bioColor"),
+            1,
+            glm::value_ptr(visualParams.bioColor)
+            );
 
         float fadeIn = glm::min(elapsedNow / physicsParams.fadeInDuration, 1.0f);
 
