@@ -63,6 +63,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
 
     // Create window
     GLFWwindow *window = glfwCreateWindow(
@@ -86,6 +87,7 @@ int main() {
     glViewport(0, 0, 960, 540);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
+    glEnable(GL_MULTISAMPLE);
     glDepthFunc(GL_LESS);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -119,13 +121,21 @@ int main() {
         "assets/shaders/tentacle_geometry.glsl",
         "assets/shaders/tentacle_fragment.glsl"
     );
+    Shader backgroundShader(
+        "assets/shaders/background_vertex.glsl",
+        "assets/shaders/background_fragment.glsl"
+    );
+    Shader strandShader(
+        "assets/shaders/strand_vertex.glsl",
+        "assets/shaders/strand_fragment.glsl"
+    );
 
     // Dome Mesh
     Mesh domeMesh = generateDomeMesh(
         30,
         30,
         1.5f,
-        0.4f
+        0.8f
         );
 
     /* Maximum number of vertex attributes we're allowed to declare
@@ -169,7 +179,15 @@ int main() {
     // Tentacles
     const int tentacleCount = 12;
     const int tentacleParticles = 10;
-    particleSystem.generateTentacles(tentacleCount, tentacleParticles, 0.15f);
+    const int innerTentacleCount = 8;
+    const int innerTentacleParticles = 16;
+    const int innerTentacleAnchorRing = 10;
+    const int strandCount = 6;
+    const int strandParticles = 24;
+    const int strandAnchorRing = 4;
+    particleSystem.generateTentacles(tentacleCount, tentacleParticles, 0.15f, 20);
+    particleSystem.generateInnerTentacles(innerTentacleCount, innerTentacleParticles, 0.15f, innerTentacleAnchorRing);
+    particleSystem.generateStrandTentacles(strandCount, strandParticles, 0.12f, strandAnchorRing);
 
     GLuint tentacleVAO, tentacleVBO;
     glGenVertexArrays(1, &tentacleVAO);
@@ -177,11 +195,38 @@ int main() {
     glBindVertexArray(tentacleVAO);
     glBindBuffer(GL_ARRAY_BUFFER, tentacleVBO);
 
-    int tentaclePosCount = tentacleCount * (tentacleParticles + 1);
+    int outerStripLen  = tentacleParticles + 1;
+    int innerStripLen  = innerTentacleParticles + 1;
+    int strandStripLen = strandParticles + 1;
+    int outerPosCount  = tentacleCount * outerStripLen;
+    int innerPosCount  = innerTentacleCount * innerStripLen;
+    int strandPosCount = strandCount * strandStripLen;
+    int tentaclePosCount = outerPosCount + innerPosCount + strandPosCount;
     glBufferData(GL_ARRAY_BUFFER, tentaclePosCount * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
     glBindVertexArray(0);
+
+    // Background fullscreen quad with NDC space
+    GLuint bgVAO, bgVBO;
+    glGenVertexArrays(1, &bgVAO);
+    glGenBuffers(1, &bgVBO);
+    glBindVertexArray(bgVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, bgVBO);
+    const float bgQuad[] = {
+        -1.0f, -1.0f,
+         1.0f, -1.0f,
+        -1.0f,  1.0f,
+        -1.0f,  1.0f,
+         1.0f, -1.0f,
+         1.0f,  1.0f
+    };
+    glBufferData(GL_ARRAY_BUFFER, sizeof(bgQuad), bgQuad, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
+
+    double simStartTime = glfwGetTime();
 
     // Main render loop
     while (!glfwWindowShouldClose(window)) {
@@ -192,10 +237,25 @@ int main() {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Underwater gradient backdrop
+        glDepthMask(GL_FALSE);
+        glDisable(GL_DEPTH_TEST);
+        backgroundShader.use();
+        glUniform3fv(glGetUniformLocation(backgroundShader.ID, "bgTopColor"),    1, glm::value_ptr(visualParams.bgTopColor));
+        glUniform3fv(glGetUniformLocation(backgroundShader.ID, "bgBottomColor"), 1, glm::value_ptr(visualParams.bgBottomColor));
+        glBindVertexArray(bgVAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(0);
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+
         // ImGui
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        // Time
+        float elapsedNow = static_cast<float>(glfwGetTime() - simStartTime);
 
         // Create transformations
         glm::mat4 model = glm::mat4(1.0f);
@@ -217,7 +277,7 @@ int main() {
 
         glUniformMatrix3fv(glGetUniformLocation(myShader.ID, "normalMatrix"), 1, GL_FALSE, &normalMatrix[0][0]);
 
-        // Phong Lighting Uniforms
+        // Shading Fresnel
         glUniform3f(glGetUniformLocation(myShader.ID, "lightPos"), visualParams.lightPos[0], visualParams.lightPos[1], visualParams.lightPos[2]);
         glUniform3f(glGetUniformLocation(myShader.ID, "lightColor"), visualParams.lightColor[0], visualParams.lightColor[1], visualParams.lightColor[2]);
         glUniform3f(glGetUniformLocation(myShader.ID, "objectColor"), visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
@@ -228,36 +288,64 @@ int main() {
         // Eye View
         glUniform3fv(glGetUniformLocation(myShader.ID, "viewPos"), 1, glm::value_ptr(camera.getEye()));
 
-        float elapsed = glfwGetTime();
-        float fadeIn = glm::min(elapsed / physicsParams.fadeInDuration, 1.0f);
+        // Shader-side time & bell-pattern uniforms
+        myShader.setFloat("time", elapsedNow);
+        myShader.setFloat("contractionFreq", physicsParams.contractionFreq);
+        myShader.setFloat("iridescence", visualParams.iridescence);
+        myShader.setFloat("bioStrength", visualParams.bioStrength);
+        glUniform3fv(glGetUniformLocation(myShader.ID, "bioColor"), 1, glm::value_ptr(visualParams.bioColor));
+
+        float fadeIn = glm::min(elapsedNow / physicsParams.fadeInDuration, 1.0f);
 
         // Physics Update
         particleSystem.applyRepulsor(
-            glm::vec3(0.0f, 0.2f, 0.0f),
+            glm::vec3(0.0f, 0.4f, 0.0f),
             physicsParams.repulsorStrength
         );
         particleSystem.applyContraction(
-            glfwGetTime(),
+            elapsedNow,
             physicsParams.contractionFreq,
             physicsParams.contractionAmp * fadeIn,
+            physicsParams.powerStrokeFraction,
             resetPositions
         );
         particleSystem.applyShapeMatching(resetPositions, physicsParams.shapeMatchingStrength);
+        particleSystem.applyApexLift(
+            physicsParams.apexLift,
+            physicsParams.apexMaxLift,
+            resetPositions
+        );
+        particleSystem.applyTentacleGravity(physicsParams.tentacleGravity);
+        particleSystem.applyTentacleInwardBias(physicsParams.tentacleInward);
+        particleSystem.applyTentacleBuoyancy(physicsParams.tentacleBuoyancy);
         particleSystem.integrate(
             1.0f / 60.0f,
-            physicsParams.damping
+            physicsParams.damping,
+            physicsParams.tentacleDamping
         );
         particleSystem.solveConstraints(physicsParams.relaxIterations);
         particleSystem.writeToMesh(domeMesh);
         domeMesh.updateBuffers();
 
-        // Draw/Render box
+        // Draw and Render box
         domeMesh.draw();
 
         // Draw tentacles
         auto tentPos = particleSystem.getTentaclePositions();
+        auto innerTentPos = particleSystem.getInnerTentaclePositions();
+        auto strandPos = particleSystem.getStrandTentaclePositions();
         glBindBuffer(GL_ARRAY_BUFFER, tentacleVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(tentPos.size() * sizeof(glm::vec3)), tentPos.data());
+        glBufferSubData(GL_ARRAY_BUFFER, 0,
+            static_cast<GLsizeiptr>(tentPos.size() * sizeof(glm::vec3)),
+            tentPos.data());
+        glBufferSubData(GL_ARRAY_BUFFER,
+            static_cast<GLsizeiptr>(tentPos.size() * sizeof(glm::vec3)),
+            static_cast<GLsizeiptr>(innerTentPos.size() * sizeof(glm::vec3)),
+            innerTentPos.data());
+        glBufferSubData(GL_ARRAY_BUFFER,
+            static_cast<GLsizeiptr>((tentPos.size() + innerTentPos.size()) * sizeof(glm::vec3)),
+            static_cast<GLsizeiptr>(strandPos.size() * sizeof(glm::vec3)),
+            strandPos.data());
 
         tentacleShader.use();
         tentacleShader.setMat4("model", model);
@@ -265,17 +353,50 @@ int main() {
         tentacleShader.setMat4("projection", projection);
 
         tentacleShader.setFloat("tubeRadius", visualParams.tubeRadius);
+        tentacleShader.setFloat("tubeRadiusTip", visualParams.tubeRadiusTip);
 
         glUniform3f(glGetUniformLocation(tentacleShader.ID, "tentacleColor"), visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
 
+        GLint stripLenLoc = glGetUniformLocation(tentacleShader.ID, "stripLen");
+
         glBindVertexArray(tentacleVAO);
+        glUniform1i(stripLenLoc, outerStripLen);
         for (int t = 0; t < tentacleCount; ++t) {
-            glDrawArrays(GL_LINE_STRIP, t * (tentacleParticles + 1), tentacleParticles + 1);
+            glDrawArrays(GL_LINE_STRIP, t * outerStripLen, outerStripLen);
+        }
+        glUniform1i(stripLenLoc, innerStripLen);
+        for (int t = 0; t < innerTentacleCount; ++t) {
+            glDrawArrays(GL_LINE_STRIP, outerPosCount + t * innerStripLen, innerStripLen);
+        }
+        glBindVertexArray(0);
+
+        // Strand tentacles
+        strandShader.use();
+        strandShader.setMat4("model", model);
+        strandShader.setMat4("view", view);
+        strandShader.setMat4("projection", projection);
+        glUniform3f(glGetUniformLocation(strandShader.ID, "strandColor"),
+            visualParams.bodyColor[0], visualParams.bodyColor[1], visualParams.bodyColor[2]);
+        GLint sStartLoc = glGetUniformLocation(strandShader.ID, "stripStart");
+        GLint sLenLoc   = glGetUniformLocation(strandShader.ID, "stripLen");
+        glUniform1i(sLenLoc, strandStripLen);
+        glBindVertexArray(tentacleVAO);
+        int strandBase = outerPosCount + innerPosCount;
+        for (int t = 0; t < strandCount; ++t) {
+            int first = strandBase + t * strandStripLen;
+            glUniform1i(sStartLoc, first);
+            glDrawArrays(GL_LINE_STRIP, first, strandStripLen);
         }
         glBindVertexArray(0);
 
         wireframe ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE) : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        if (resetSim) particleSystem.reset(originalMesh);
+        if (resetSim) {
+            particleSystem.regenerateTentacles(tentacleCount, tentacleParticles, physicsParams.tentacleStiffness);
+            particleSystem.generateInnerTentacles(innerTentacleCount, innerTentacleParticles, physicsParams.tentacleStiffness, innerTentacleAnchorRing);
+            particleSystem.generateStrandTentacles(strandCount, strandParticles, 0.12f, strandAnchorRing);
+            particleSystem.reset(originalMesh);
+            simStartTime = glfwGetTime();
+        };
 
         guiManager.render(
             resetSim,
@@ -298,8 +419,12 @@ int main() {
     domeMesh.cleanup();
     glDeleteVertexArrays(1, &tentacleVAO);
     glDeleteBuffers(1, &tentacleVBO);
+    glDeleteVertexArrays(1, &bgVAO);
+    glDeleteBuffers(1, &bgVBO);
     glDeleteProgram(myShader.ID);
     glDeleteProgram(tentacleShader.ID);
+    glDeleteProgram(backgroundShader.ID);
+    glDeleteProgram(strandShader.ID);
 
     glfwDestroyWindow(window);
     glfwTerminate();
