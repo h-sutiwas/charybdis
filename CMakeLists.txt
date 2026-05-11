@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 4.1)
 project(charybdis)
 
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/dist"
+        CACHE PATH "Install prefix" FORCE)
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 
 include(FetchContent)
@@ -49,3 +54,34 @@ add_executable(charybdis ${SOURCES})
 target_include_directories(charybdis PRIVATE include)
 
 target_link_libraries(charybdis PRIVATE imgui glfw glad glm::glm OpenGL::GL stb)
+
+include(GNUInstallDirs)
+
+install(TARGETS charybdis
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets/
+        DESTINATION ${CMAKE_INSTALL_BINDIR}/assets)
+
+add_custom_command(TARGET charybdis POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                $<TARGET_FILE:glfw>
+                $<TARGET_FILE_DIR:charybdis>
+        COMMAND_EXPAND_LISTS
+        VERBATIM)
+
+if (MINGW)
+    get_filename_component(MINGW_BIN_DIR ${CMAKE_CXX_COMPILER} DIRECTORY)
+    foreach (dll IN ITEMS libstdc++-6.dll libgcc_s_seh-1.dll libwinpthread-1.dll)
+        if (EXISTS ${MINGW_BIN_DIR}/${dll})
+            add_custom_command(TARGET charybdis POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            ${MINGW_BIN_DIR}/${dll}
+                            $<TARGET_FILE_DIR:charybdis>)
+        endif()
+    endforeach()
+endif()
+
+install(DIRECTORY $<TARGET_FILE_DIR:charybdis>/
+        DESTINATION ${CMAKE_INSTALL_BINDIR}
+        FILES_MATCHING PATTERN "*.dll")
