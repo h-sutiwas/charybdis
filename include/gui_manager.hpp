@@ -18,18 +18,31 @@ struct PhysicsParams {
     float damping = 0.99f;
     int relaxIterations = 10;
     float shapeMatchingStrength = 0.5f;
+    float tentacleStiffness = 0.18f;
     float tentacleGravity = 0.05f;
+    float tentacleInward = 0.05f;
+    float apexLift = 0.5f;
+    float apexMaxLift = 0.05f;
     float fadeInDuration = 2.0f;
+    float powerStrokeFraction = 0.3f;
+    float tentacleDamping = 0.95f;
+    float tentacleBuoyancy = 0.01f;
 };
 
 struct VisualParams {
     float tubeRadius = 0.02f;
+    float tubeRadiusTip = 0.3f;
     float fresnelPower = 2.0f;
     float absorptionCoeff = 1.5f;
     float ambientStrength = 0.15f;
     glm::vec3 bodyColor = {0.4f, 0.6f, 0.9f};
     glm::vec3 lightPos = {2.0f, 3.0f, 2.0f};
     glm::vec3 lightColor =  {1.0f, 1.0f, 1.0f};
+    float iridescence = 0.5f;
+    float bioStrength = 1.0f;
+    glm::vec3 bioColor = {0.3f, 0.8f, 1.0f};
+    glm::vec3 bgTopColor    = {0.05f, 0.30f, 0.50f};
+    glm::vec3 bgBottomColor = {0.01f, 0.03f, 0.08f};
 };
 
 struct CameraParams {
