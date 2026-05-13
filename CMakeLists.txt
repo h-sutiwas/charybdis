@@ -67,6 +67,9 @@ add_custom_command(TARGET charybdis POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 $<TARGET_FILE:glfw>
                 $<TARGET_FILE_DIR:charybdis>
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/assets
+                $<TARGET_FILE_DIR:charybdis>/assets
         COMMAND_EXPAND_LISTS
         VERBATIM)
 

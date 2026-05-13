@@ -2,12 +2,16 @@
 // Created by hamji on 2026-03-23.
 //
 
-// #define STB_IMAGE_IMPLEMENTATION
-// #include "../external/stb/stb_image.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "../external/stb/stb_image.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-// #include <windows.h>
+
+#ifdef _WIN32
+    #include <windows.h>
+#endif
+
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -50,6 +54,16 @@
 #include "imgui_impl_opengl3.h"
 
 
+
+static std::filesystem::path exeDir() {
+#ifdef _WIN32
+    wchar_t buf[MAX_PATH];
+    GetModuleFileNameW(NULL, buf, MAX_PATH);
+    return std::filesystem::path(buf).parent_path();
+#else
+    return std::filesystem::canonical("/proc/self/exe").parent_path();
+#endif
+};
 
 int main() {
     // std::cout << "CWD:" << std::filesystem::current_path().string() << std::endl;
@@ -112,22 +126,26 @@ int main() {
     registerCallbacks(window);
 
     // Shader Linking
+
+    const auto assets = (exeDir() / "assets" / "shaders");
+    auto p = [&](const char* file) { return (assets / file).string(); };
+
     Shader myShader(
-        "assets/shaders/phong_vertex.glsl",
-        "assets/shaders/jelly_fragment.glsl"
+        p("phong_vertex.glsl").c_str(),
+        p("jelly_fragment.glsl").c_str()
         );
     Shader tentacleShader(
-        "assets/shaders/tentacle_vertex.glsl",
-        "assets/shaders/tentacle_geometry.glsl",
-        "assets/shaders/tentacle_fragment.glsl"
-    );
+        p("tentacle_vertex.glsl").c_str(),
+        p("tentacle_geometry.glsl").c_str(),
+        p("tentacle_fragment.glsl").c_str()
+        );
     Shader backgroundShader(
-        "assets/shaders/background_vertex.glsl",
-        "assets/shaders/background_fragment.glsl"
+        p("background_vertex.glsl").c_str(),
+        p("background_fragment.glsl").c_str()
     );
     Shader strandShader(
-        "assets/shaders/strand_vertex.glsl",
-        "assets/shaders/strand_fragment.glsl"
+        p("strand_vertex.glsl").c_str(),
+        p("strand_fragment.glsl").c_str()
     );
 
     // Dome Mesh
@@ -419,10 +437,10 @@ int main() {
 
         wireframe ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE) : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         if (resetSim) {
-            particleSystem.regenerateTentacles(tentacleCount, tentacleParticles, physicsParams.tentacleStiffness);
+            particleSystem.reset(originalMesh);
+            particleSystem.regenerateTentacles(tentacleCount, tentacleParticles, physicsParams.tentacleStiffness, 20);
             particleSystem.generateInnerTentacles(innerTentacleCount, innerTentacleParticles, physicsParams.tentacleStiffness, innerTentacleAnchorRing);
             particleSystem.generateStrandTentacles(strandCount, strandParticles, 0.12f, strandAnchorRing);
-            particleSystem.reset(originalMesh);
             simStartTime = glfwGetTime();
         };
 
